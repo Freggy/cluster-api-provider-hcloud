@@ -3,4 +3,23 @@ layout:
 - go.kubebuilder.io/v3
 projectName: cluster-api-provider-hcloud
 repo: github.com/Freggy/cluster-api-provider-hcloud
+resources:
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cluster.x-k8s.io
+  group: infrastructure
+  kind: HCloudCluster
+  path: github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1
+  version: v1beta1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: cluster.x-k8s.io
+  group: infrastructure
+  kind: HCloudMachine
+  path: github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1
+  version: v1beta1
 version: "3"
