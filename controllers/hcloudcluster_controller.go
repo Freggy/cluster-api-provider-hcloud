@@ -19,12 +19,13 @@ package controllers
 import (
 	"context"
 
+	infrastructurev1beta1 "github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	infrastructurev1beta1 "github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1"
 )
 
 // HCloudClusterReconciler reconciles a HCloudCluster object
@@ -47,7 +48,25 @@ type HCloudClusterReconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = log.FromContext(ctx)
+	logger := log.FromContext(ctx)
+
+	var hcCluster infrastructurev1beta1.HCloudCluster
+	if err := r.Get(ctx, req.NamespacedName, &hcCluster); err != nil {
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{}, nil
+		}
+		return ctrl.Result{}, err
+	}
+
+	capiCluster, err := util.GetOwnerCluster(ctx, r.Client, hcCluster.ObjectMeta)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if capiCluster == nil {
+		logger.Info("cluster object currently has no OwnerRef")
+		return ctrl.Result{}, nil
+	}
 
 	// TODO(user): your logic here
 
