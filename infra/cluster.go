@@ -77,10 +77,6 @@ func applyLBDefaults(lb *infrav1.LoadBalancer) {
 		lb.Type = ""
 	}
 
-	if lb.Location == "" {
-		lb.Location = ""
-	}
-
 	if lb.Algorithm == "" {
 		lb.Algorithm = "round_robin"
 	}
