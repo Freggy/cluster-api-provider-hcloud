@@ -3,25 +3,14 @@ package infra
 import (
 	"context"
 	"fmt"
-	"net"
 
+	infrav1 "github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1"
 	"github.com/hetznercloud/hcloud-go/hcloud"
 )
 
 type ClusterService struct {
 	cluster string
 	client  *hcloud.Client
-}
-
-type LoadBalancer struct {
-	ID        int
-	Name      string
-	Location  string
-	Type      string
-	Algorithm string
-	IPV4      net.IP
-	IPV6      net.IP
-	Port      int
 }
 
 func NewClusterService(cluster string, client *hcloud.Client) *ClusterService {
@@ -31,34 +20,26 @@ func NewClusterService(cluster string, client *hcloud.Client) *ClusterService {
 	}
 }
 
-func (cs *ClusterService) GetLoadBalancer(ctx context.Context, id int) (LoadBalancer, error) {
-	lb, _, err := cs.client.LoadBalancer.GetByID(ctx, id)
+func (cs *ClusterService) GetLoadBalancer(ctx context.Context, infraLB infrav1.LoadBalancer) (*hcloud.LoadBalancer, error) {
+	lb, _, err := cs.client.LoadBalancer.GetByID(ctx, infraLB.ID)
 	if err != nil {
-		return LoadBalancer{}, err
+		return nil, err
 	}
-	return LoadBalancer{
-		ID:        lb.ID,
-		Name:      lb.Name,
-		Location:  lb.Location.Name,
-		Type:      lb.LoadBalancerType.Name,
-		Algorithm: string(lb.Algorithm.Type),
-		IPV4:      lb.PublicNet.IPv4.IP,
-		IPV6:      lb.PublicNet.IPv6.IP,
-		Port:      lb.Services[0].ListenPort,
-	}, nil
+	return lb, nil
 }
 
-func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, lbType string, location string) (LoadBalancer, error) {
+func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, lb infrav1.LoadBalancer) (*hcloud.LoadBalancer, error) {
+	applyLBDefaults(&lb)
 	opts := hcloud.LoadBalancerCreateOpts{
 		Name: fmt.Sprintf("lb-%s", cs.cluster),
 		LoadBalancerType: &hcloud.LoadBalancerType{
-			Name: lbType,
+			Name: lb.Type,
 		},
 		Algorithm: &hcloud.LoadBalancerAlgorithm{
-			Type: hcloud.LoadBalancerAlgorithmTypeRoundRobin,
+			Type: hcloud.LoadBalancerAlgorithmType(lb.Algorithm),
 		},
 		Location: &hcloud.Location{
-			Name: location,
+			Name: lb.Location,
 		},
 		Labels: map[string]string{
 			"cluster": cs.cluster,
@@ -66,16 +47,21 @@ func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, lbType string,
 	}
 	result, _, err := cs.client.LoadBalancer.Create(ctx, opts)
 	if err != nil {
-		return LoadBalancer{}, err
+		return nil, err
 	}
-	return LoadBalancer{
-		ID:        result.LoadBalancer.ID,
-		Name:      result.LoadBalancer.Name,
-		Location:  result.LoadBalancer.Location.Name,
-		Type:      result.LoadBalancer.LoadBalancerType.Name,
-		Algorithm: string(result.LoadBalancer.Algorithm.Type),
-		IPV4:      result.LoadBalancer.PublicNet.IPv4.IP,
-		IPV6:      result.LoadBalancer.PublicNet.IPv6.IP,
-		Port:      result.LoadBalancer.Services[0].ListenPort,
-	}, nil
+	return result.LoadBalancer, nil
+}
+
+func applyLBDefaults(lb *infrav1.LoadBalancer) {
+	if lb.Type == "" {
+		lb.Type = ""
+	}
+
+	if lb.Location == "" {
+		lb.Location = ""
+	}
+
+	if lb.Algorithm == "" {
+		lb.Algorithm = "round_robin"
+	}
 }

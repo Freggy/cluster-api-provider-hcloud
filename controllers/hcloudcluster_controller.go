@@ -19,9 +19,11 @@ package controllers
 import (
 	"context"
 
-	infrastructurev1beta1 "github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1"
+	infrav1 "github.com/Freggy/cluster-api-provider-hcloud/api/v1beta1"
+	"github.com/Freggy/cluster-api-provider-hcloud/infra"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	clusterv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 	"sigs.k8s.io/cluster-api/util"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,10 +49,10 @@ type HCloudClusterReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
-func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ret ctrl.Result, reterr error) {
 	logger := log.FromContext(ctx)
 
-	var hcCluster infrastructurev1beta1.HCloudCluster
+	var hcCluster infrav1.HCloudCluster
 	if err := r.Get(ctx, req.NamespacedName, &hcCluster); err != nil {
 		if apierrors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -68,7 +70,33 @@ func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 		return ctrl.Result{}, nil
 	}
 
-	// TODO(user): your logic here
+	clustersvc := infra.NewClusterService(capiCluster.GenerateName, nil)
+
+	if hcCluster.Status.LoadBalancer.ID == 0 {
+		lb, err := clustersvc.CreateLoadBalancer(ctx, hcCluster.Spec.LoadBalancer)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		hcCluster.Status.LoadBalancer = infrav1.LoadBalancer{
+			ID:        lb.ID,
+			Algorithm: string(lb.Algorithm.Type),
+			Location:  lb.Location.Name,
+			Type:      lb.LoadBalancerType.Name,
+			IPv4:      lb.PublicNet.IPv4.IP,
+			IPv6:      lb.PublicNet.IPv6.IP,
+			Port:      lb.Services[0].ListenPort,
+		}
+		hcCluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
+			AdvertiseAddress: lb.PublicNet.IPv4.IP.String(),
+			BindPort:         int32(lb.Services[0].ListenPort),
+		}
+	}
+
+	defer func() {
+		if err := r.Update(ctx, &hcCluster); err != nil {
+			reterr = err
+		}
+	}()
 
 	return ctrl.Result{}, nil
 }
@@ -76,6 +104,6 @@ func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 // SetupWithManager sets up the controller with the Manager.
 func (r *HCloudClusterReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&infrastructurev1beta1.HCloudCluster{}).
+		For(&infrav1.HCloudCluster{}).
 		Complete(r)
 }

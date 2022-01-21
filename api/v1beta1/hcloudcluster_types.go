@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	clusterv1 "sigs.k8s.io/cluster-api/bootstrap/kubeadm/api/v1beta1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -25,17 +26,16 @@ import (
 
 // HCloudClusterSpec defines the desired state of HCloudCluster
 type HCloudClusterSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of HCloudCluster. Edit hcloudcluster_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	Region               string
+	LoadBalancer         LoadBalancer          `json:"loadBalancer,omitempty"`
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
 }
 
 // HCloudClusterStatus defines the observed state of HCloudCluster
 type HCloudClusterStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// IDof the created load balancer
+	LoadBalancer LoadBalancer `json:"loadBalancer,omitempty"`
+	Ready        bool         `json:"ready"`
 }
 
 //+kubebuilder:object:root=true
