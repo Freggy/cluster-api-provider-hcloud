@@ -83,7 +83,11 @@ func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	return ctrl.Result{}, nil
 }
 
-func (r *HCloudClusterReconciler) reconcileCreate(ctx context.Context, hcCluster infrav1.HCloudCluster, clustersvc *infra.ClusterService) error {
+func (r *HCloudClusterReconciler) reconcileCreate(
+	ctx context.Context,
+	hcCluster infrav1.HCloudCluster,
+	clustersvc *infra.ClusterService,
+) error {
 	if hcCluster.Status.LoadBalancer.ID != 0 {
 		return nil
 	}
@@ -108,7 +112,11 @@ func (r *HCloudClusterReconciler) reconcileCreate(ctx context.Context, hcCluster
 	return nil
 }
 
-func (r *HCloudClusterReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) {
+func (r *HCloudClusterReconciler) reconcileDelete(
+	ctx context.Context,
+	hcCluster infrav1.HCloudCluster,
+	clustersvc *infra.ClusterService,
+) {
 
 }
 
