@@ -42,10 +42,6 @@ type HCloudClusterReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the HCloudCluster object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
@@ -71,26 +67,12 @@ func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}
 
 	clustersvc := infra.NewClusterService(capiCluster.GenerateName, nil)
-
-	if hcCluster.Status.LoadBalancer.ID == 0 {
-		lb, err := clustersvc.CreateLoadBalancer(ctx, hcCluster.Spec.LoadBalancer)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		hcCluster.Status.LoadBalancer = infrav1.LoadBalancer{
-			ID:        lb.ID,
-			Algorithm: string(lb.Algorithm.Type),
-			Location:  lb.Location.Name,
-			Type:      lb.LoadBalancerType.Name,
-			IPv4:      lb.PublicNet.IPv4.IP,
-			IPv6:      lb.PublicNet.IPv6.IP,
-			Port:      lb.Services[0].ListenPort,
-		}
-		hcCluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
-			AdvertiseAddress: lb.PublicNet.IPv4.IP.String(),
-			BindPort:         int32(lb.Services[0].ListenPort),
-		}
+	if err := r.reconcileCreate(ctx, hcCluster, clustersvc); err != nil {
+		return ctrl.Result{}, err
 	}
+
+	// TODO: handle delete
+	// TODO: add finalizer
 
 	defer func() {
 		if err := r.Update(ctx, &hcCluster); err != nil {
@@ -99,6 +81,35 @@ func (r *HCloudClusterReconciler) Reconcile(ctx context.Context, req ctrl.Reques
 	}()
 
 	return ctrl.Result{}, nil
+}
+
+func (r *HCloudClusterReconciler) reconcileCreate(ctx context.Context, hcCluster infrav1.HCloudCluster, clustersvc *infra.ClusterService) error {
+	if hcCluster.Status.LoadBalancer.ID != 0 {
+		return nil
+	}
+	lb, err := clustersvc.CreateLoadBalancer(ctx, hcCluster.Spec.LoadBalancer)
+	if err != nil {
+		return err
+	}
+	// TODO: maybe wait until load balancer is ready?
+	hcCluster.Status.LoadBalancer = infrav1.LoadBalancer{
+		ID:        lb.ID,
+		Algorithm: string(lb.Algorithm.Type),
+		Location:  lb.Location.Name,
+		Type:      lb.LoadBalancerType.Name,
+		IPv4:      lb.PublicNet.IPv4.IP,
+		IPv6:      lb.PublicNet.IPv6.IP,
+		Port:      lb.Services[0].ListenPort,
+	}
+	hcCluster.Spec.ControlPlaneEndpoint = clusterv1.APIEndpoint{
+		AdvertiseAddress: lb.PublicNet.IPv4.IP.String(),
+		BindPort:         int32(lb.Services[0].ListenPort),
+	}
+	return nil
+}
+
+func (r *HCloudClusterReconciler) reconcileDelete(ctx context.Context, req ctrl.Request) {
+
 }
 
 // SetupWithManager sets up the controller with the Manager.
