@@ -91,7 +91,7 @@ func (r *HCloudClusterReconciler) reconcileCreate(
 	if hcCluster.Status.LoadBalancer.ID != 0 {
 		return nil
 	}
-	lb, err := clustersvc.CreateLoadBalancer(ctx, hcCluster.Spec.LoadBalancer)
+	lb, err := clustersvc.CreateLoadBalancer(ctx, hcCluster.Spec.Region, hcCluster.Spec.LoadBalancer)
 	if err != nil {
 		return err
 	}
@@ -99,7 +99,6 @@ func (r *HCloudClusterReconciler) reconcileCreate(
 	hcCluster.Status.LoadBalancer = infrav1.LoadBalancer{
 		ID:        lb.ID,
 		Algorithm: string(lb.Algorithm.Type),
-		Location:  lb.Location.Name,
 		Type:      lb.LoadBalancerType.Name,
 		IPv4:      lb.PublicNet.IPv4.IP,
 		IPv6:      lb.PublicNet.IPv6.IP,

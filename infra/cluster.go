@@ -29,7 +29,7 @@ func (cs *ClusterService) GetLoadBalancer(ctx context.Context, infraLB infrav1.L
 	return lb, nil
 }
 
-func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, lb infrav1.LoadBalancer) (*hcloud.LoadBalancer, error) {
+func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, region string, lb infrav1.LoadBalancer) (*hcloud.LoadBalancer, error) {
 	applyLBDefaults(&lb)
 	var opts = hcloud.LoadBalancerCreateOpts{
 		Name: fmt.Sprintf("lb-%s", cs.cluster),
@@ -40,7 +40,7 @@ func (cs *ClusterService) CreateLoadBalancer(ctx context.Context, lb infrav1.Loa
 			Type: hcloud.LoadBalancerAlgorithmType(lb.Algorithm),
 		},
 		Location: &hcloud.Location{
-			Name: lb.Location,
+			Name: region,
 		},
 		Labels: map[string]string{
 			"cluster": cs.cluster,
