@@ -26,16 +26,29 @@ import (
 
 // HCloudClusterSpec defines the desired state of HCloudCluster
 type HCloudClusterSpec struct {
-	Region               string
-	LoadBalancer         LoadBalancer          `json:"loadBalancer,omitempty"`
-	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint"`
+
+	// The region the cluster will be created in. To see which regions are
+	// available, see here https://docs.hetzner.cloud/#locations-get-all-locations
+	// +optional
+	Region string `json:"region"`
+
+	// The load balancer that will be used for load balancing traffic across the cluster nodes
+	// + optional
+	LoadBalancer LoadBalancer `json:"loadBalancer,omitempty"`
+
+	// Endpoint where the control plane is reachable
+	// +optional
+	ControlPlaneEndpoint clusterv1.APIEndpoint `json:"controlPlaneEndpoint,omitempty"`
 }
 
 // HCloudClusterStatus defines the observed state of HCloudCluster
 type HCloudClusterStatus struct {
-	// IDof the created load balancer
+	// The load balancer created by the controller
 	LoadBalancer LoadBalancer `json:"loadBalancer,omitempty"`
-	Ready        bool         `json:"ready"`
+
+	// Whether the cluster is ready
+	// +optional
+	Ready bool `json:"ready"`
 }
 
 //+kubebuilder:object:root=true
