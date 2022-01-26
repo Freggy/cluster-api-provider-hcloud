@@ -23,3 +23,6 @@ testbin/*
 *.swp
 *.swo
 *~
+
+caphc.yaml
+hack/tools/*
